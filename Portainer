@@ -3,10 +3,37 @@
 docker volume create portainer_data # Criar volume "portainer_data"
 docker run -d -p 9000:9000 --name portainer --restart always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer -H unix:///var/run/docker.sock # Instalar o Portainer
 
-docker network create -d macvlan --subnet=100.98.26.43/24 --gateway=100.98.26.1  -o parent=eth0 pub_net
+root@ubuntu:~# docker  run --net=pub_net --ip=100.98.26.47 -itd alpine /bin/sh
+Unable to find image 'alpine:latest' locally
+latest: Pulling from library/alpine
+ff3a5c916c92: Pull complete
+Digest: sha256:e1871801d30885a610511c867de0d6baca7ed4e6a2573d506bbec7fd3b03873f
+Status: Downloaded newer image for alpine:latest
+493a9566c31c15b1a19855f44ef914e7979b46defde55ac6ee9d7db6c9b620e0
+Ponto importante : Ao usar o macvlan, você não pode executar ping ou se comunicar com o endereço IP do namespace padrão. Por exemplo, se você criar um contêiner e tentar executar ping na eth0 do host do Docker, ele não funcionará. Esse tráfego é explicitamente filtrado pelos próprios módulos do kernel para oferecer isolamento e segurança adicionais do provedor.
 
+Ativando a comunicação entre o contêiner e o host
+É simples. Basta executar o comando abaixo:
 
-docker network create -d macvlan \
-  --subnet=172.16.86.0/24 \
-  --gateway=172.16.86.1 \
-  -o parent=eth0 pub_net
+Exemplo: link ip adicionar link mac0 $PARENTDEV tipo macvlan mode bridge
+
+Então, no nosso caso, será:
+
+ip link add mac0 link eth0 type macvlan mode bridge
+ip addr add 100.98.26.38/24 dev mac0
+ifconfig mac0 up
+Vamos tentar criar container e pingar:
+
+root@ubuntu:~# docker run --net=pub_net -d --ip=100.98.26.53 -p 81:80 nginx
+10146a39d7d8839b670fc5666950c0e265037105e61b0382575466cc62d34824
+root@ubuntu:~# ping 100.98.26.53
+PING 100.98.26.53 (100.98.26.53) 56(84) bytes of data.
+64 bytes from 100.98.26.53: icmp_seq=1 ttl=64 time=1.00 ms
+64 bytes from 100.98.26.53: icmp_seq=2 ttl=64 time=0.501 ms
+Uau ! Apenas funcionou.
+
+https://asciinema.org/a/188971
+
+Você achou este blog útil? Sinta-se à vontade para compartilhar sua experiência. Entre em contato  @ajeetsraina .
+
+Se você está procurando contribuições/discussões, junte-se a mim no  Docker Community Slack Channel.
